@@ -1,6 +1,6 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# OpenOLAT API & MCP
+# OpenOLAT MCP & API
 
 Read-only REST-API und MCP-Server für [olat.bms-w.ch](https://olat.bms-w.ch) (OpenOLAT 21).
 Lernende hinterlegen ihre OpenOLAT-Anmeldedaten; danach können die API bzw. ein KI-Agent über MCP
@@ -42,7 +42,7 @@ npm run build
 ### Variante A – lokal mit Claude Code / Claude Desktop (stdio)
 
 ```bash
-node dist/cli.js login        # fragt Benutzername + Passwort, speichert verschlüsselt in ~/.openolat-api-mcp
+node dist/cli.js login        # fragt Benutzername + Passwort, speichert verschlüsselt in ~/.openolat-mcp-api
 claude mcp add openolat -- node /pfad/zu/dist/cli.js stdio
 ```
 
@@ -51,9 +51,9 @@ Alternativ ohne `login`: `OLAT_USERNAME` und `OLAT_PASSWORD` als Umgebungsvariab
 ### Variante B – Server für mehrere Nutzer (HTTP)
 
 ```bash
-HOST=0.0.0.0 PORT=3000 PUBLIC_URL=https://openolat-api-mcp.example.ch npm start
+HOST=0.0.0.0 PORT=3000 PUBLIC_URL=https://openolat-mcp-api.example.ch npm start
 # oder
-docker build -t openolat-api-mcp . && docker run -p 3000:3000 -v openolat-api-mcp-data:/data openolat-api-mcp
+docker build -t openolat-mcp-api . && docker run -p 3000:3000 -v openolat-mcp-api-data:/data openolat-mcp-api
 ```
 
 1. `https://<server>/` öffnen, Anmeldedaten eingeben → persönliches Token (`olat_…`) wird einmalig angezeigt.

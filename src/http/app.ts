@@ -83,7 +83,7 @@ export function createApp(deps: AppDeps) {
     const token = bearer(c);
     const hit = token ? deps.store.resolve(token) : null;
     if (!token || !hit) {
-      c.header('WWW-Authenticate', 'Bearer realm="openolat-api-mcp"');
+      c.header('WWW-Authenticate', 'Bearer realm="openolat-mcp-api"');
       return c.json({ error: 'Unauthorized', message: 'Gültiges Token im Header "Authorization: Bearer <token>" erforderlich.' }, 401);
     }
     c.set('client', deps.pool.get(hit.creds));

@@ -13,7 +13,7 @@ import { OlatRestClient } from './olat/rest.js';
 import type { Credentials } from './olat/web.js';
 import { CredentialStore } from './store/credentials.js';
 
-const HELP = `openolat-api-mcp – read-only API & MCP-Server für OpenOLAT (olat.bms-w.ch)
+const HELP = `openolat-mcp-api – read-only MCP-Server & API für OpenOLAT (olat.bms-w.ch)
 
 Befehle:
   login           Anmeldedaten lokal (verschlüsselt) hinterlegen
@@ -73,7 +73,7 @@ function logout() {
 async function stdio() {
   const creds = localCredentials();
   if (!creds) {
-    console.error('Keine Zugangsdaten: zuerst "openolat-api-mcp login" ausführen oder OLAT_USERNAME/OLAT_PASSWORD setzen.');
+    console.error('Keine Zugangsdaten: zuerst "openolat-mcp-api login" ausführen oder OLAT_USERNAME/OLAT_PASSWORD setzen.');
     process.exit(1);
   }
   const client = new OlatClient(creds, clientOpts);
@@ -86,7 +86,7 @@ function serveHttp() {
   const pool = new OlatClientPool(clientOpts);
   const app = createApp({ store, pool, baseUrl: cfg.baseUrl, publicUrl: cfg.publicUrl });
   serve({ fetch: app.fetch, hostname: cfg.host, port: cfg.port }, (info) => {
-    console.error(`openolat-api-mcp läuft auf http://${info.address}:${info.port}  (Setup: /, MCP: /mcp, API: /api)`);
+    console.error(`openolat-mcp-api läuft auf http://${info.address}:${info.port}  (Setup: /, MCP: /mcp, API: /api)`);
   });
 }
 

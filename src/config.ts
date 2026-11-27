@@ -19,7 +19,7 @@ export function loadConfig(env = process.env): Config {
     host: env.HOST ?? '127.0.0.1',
     port: Number(env.PORT ?? 3000),
     dataDir: env.DATA_DIR ?? join(process.cwd(), 'data'),
-    localDir: env.OPENOLAT_API_MCP_HOME ?? join(homedir(), '.openolat-api-mcp'),
+    localDir: env.OPENOLAT_MCP_API_HOME ?? join(homedir(), '.openolat-mcp-api'),
     secret: env.OLAT_MCP_SECRET || undefined,
     publicUrl: env.PUBLIC_URL || undefined,
     maxDownloadBytes: Number(env.MAX_DOWNLOAD_MB ?? 30) * 1024 * 1024,
