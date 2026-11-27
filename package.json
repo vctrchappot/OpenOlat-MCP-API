@@ -1,0 +1,43 @@
+{
+  "name": "bmsw-olat-mcp",
+  "version": "1.0.0",
+  "description": "Read-only REST API and MCP server for OpenOLAT at olat.bms-w.ch",
+  "main": "dist/olat/client.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "tsx src/cli.ts serve",
+    "stdio": "tsx src/cli.ts stdio",
+    "start": "node dist/cli.js serve",
+    "smoke": "tsx --env-file=.env scripts/smoke.ts"
+  },
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@hono/node-server": "^2.1.11",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "cheerio": "^1.2.0",
+    "domhandler": "^6.0.1",
+    "fflate": "^0.8.3",
+    "hono": "^4.13.23",
+    "unpdf": "^2.2.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  },
+  "bin": {
+    "bmsw-olat-mcp": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "private": true
+}
