@@ -1,6 +1,6 @@
 <img src="assets/icon.svg" width="64" height="64" alt="">
 
-# BMSW OpenOLAT API & MCP
+# OpenOLAT API & MCP
 
 Read-only REST-API und MCP-Server für [olat.bms-w.ch](https://olat.bms-w.ch) (OpenOLAT 21).
 Lernende hinterlegen ihre OpenOLAT-Anmeldedaten; danach können die API bzw. ein KI-Agent über MCP
@@ -42,8 +42,8 @@ npm run build
 ### Variante A – lokal mit Claude Code / Claude Desktop (stdio)
 
 ```bash
-node dist/cli.js login        # fragt Benutzername + Passwort, speichert verschlüsselt in ~/.olat-mcp
-claude mcp add olat -- node /pfad/zu/dist/cli.js stdio
+node dist/cli.js login        # fragt Benutzername + Passwort, speichert verschlüsselt in ~/.openolat-api-mcp
+claude mcp add openolat -- node /pfad/zu/dist/cli.js stdio
 ```
 
 Alternativ ohne `login`: `OLAT_USERNAME` und `OLAT_PASSWORD` als Umgebungsvariablen des MCP-Servers setzen.
@@ -51,15 +51,15 @@ Alternativ ohne `login`: `OLAT_USERNAME` und `OLAT_PASSWORD` als Umgebungsvariab
 ### Variante B – Server für mehrere Nutzer (HTTP)
 
 ```bash
-HOST=0.0.0.0 PORT=3000 PUBLIC_URL=https://olat-mcp.example.ch npm start
+HOST=0.0.0.0 PORT=3000 PUBLIC_URL=https://openolat-api-mcp.example.ch npm start
 # oder
-docker build -t bmsw-olat-mcp . && docker run -p 3000:3000 -v olat-mcp-data:/data bmsw-olat-mcp
+docker build -t openolat-api-mcp . && docker run -p 3000:3000 -v openolat-api-mcp-data:/data openolat-api-mcp
 ```
 
 1. `https://<server>/` öffnen, Anmeldedaten eingeben → persönliches Token (`olat_…`) wird einmalig angezeigt.
 2. MCP-Client verbinden:
    ```bash
-   claude mcp add --transport http olat https://<server>/mcp --header "Authorization: Bearer olat_…"
+   claude mcp add --transport http openolat https://<server>/mcp --header "Authorization: Bearer olat_…"
    ```
 3. Oder die REST-API direkt nutzen: `curl -H "Authorization: Bearer olat_…" https://<server>/api/courses`
 
