@@ -65,6 +65,58 @@ docker build -t openolat-mcp-api . && docker run -p 3000:3000 -v openolat-mcp-ap
 
 Der Server sollte nur hinter HTTPS (Reverse Proxy) betrieben werden.
 
+### Variante C – Vercel (öffentliche HTTPS-Adresse)
+
+Der Server läuft auf Vercel als Hono-Funktion (`src/index.ts`, Framework-Preset *Hono*, siehe `vercel.json`). Vercel stellt HTTPS
+und die öffentliche Domain bereit – `HOST`/`PORT` sind dort nicht relevant. Da das Dateisystem von Vercel nicht persistent ist,
+verwendet der Server dort automatisch den **zustandslosen Token-Store** (`STORE=stateless`, ohne Datenbank und ohne Volume):
+das Token enthält die mit `OLAT_MCP_SECRET` (AES-256-GCM) verschlüsselten Anmeldedaten.
+
+```bash
+vercel link --project openolat-mcp-api
+openssl rand -base64 48 | vercel env add OLAT_MCP_SECRET production --sensitive   # einmalig, nie ins Repository
+vercel deploy --prod
+```
+
+- **Pflicht:** `OLAT_MCP_SECRET` (mind. 32 Zeichen). Ohne dieses Secret startet die Funktion nicht. Das Secret muss dauerhaft gleich
+  bleiben: wird es geändert, werden **alle** ausgegebenen Tokens ungültig (so lassen sich alle Tokens widerrufen).
+- Optional: `OLAT_BASE_URL` (Standard `https://olat.bms-w.ch`), `MAX_DOWNLOAD_MB`, `MAX_INLINE_MB`. `PUBLIC_URL` ist nicht nötig.
+- Einzelne Tokens lassen sich nicht widerrufen (`DELETE /api/tokens` antwortet mit 501). Bei Verlust eines Tokens: OpenOLAT-Passwort
+  ändern oder das Secret erneuern.
+- Vercel begrenzt Antworten von Funktionen auf ca. 4,5 MB; sehr grosse Dateien sind darüber nicht abrufbar.
+- Deployment Protection muss für Production **aus** sein, sonst erreicht ein MCP-Client `/mcp` nicht (der Zugriff ist durch das Token geschützt).
+
+### Einrichtung in WorkTrack (oder einem anderen MCP-Client mit HTTP-Transport)
+
+1. `https://<öffentlicher-hostname>/` im Browser öffnen, OpenOLAT-Benutzername und -Passwort eingeben → das Token `olat_…` wird
+   **einmalig** angezeigt; sofort in WorkTrack bzw. den Passwortmanager kopieren, nicht in Chats oder Tickets einfügen.
+   (Ohne Browser: `POST https://<hostname>/api/tokens` mit JSON `{"username":"…","password":"…","label":"WorkTrack"}`.)
+2. In WorkTrack eintragen:
+
+   | Feld | Wert |
+   | --- | --- |
+   | MCP-URL | `https://<öffentlicher-hostname>/mcp` (nicht `localhost`, nicht `olat.bms-w.ch`) |
+   | Transport | Streamable HTTP |
+   | Header | `Authorization: Bearer olat_…` |
+
+3. Werkzeuge und Eingaben (alle lesend, mit `readOnlyHint`):
+
+   | Zweck | Tool | Eingabe |
+   | --- | --- | --- |
+   | Termine | `olat_list_calendar_events` | `{"from":"2026-01-01","to":"2026-01-15"}` (ISO-Datum, beide optional; Standard: ab heute, 60 Tage) |
+   | Neuigkeiten | `olat_get_notifications` | `{"since":"2026-01-01"}` (ISO-Datum, optional; Standard: letzte 7 Tage) |
+   | Kurse | `olat_list_courses` | `{}` |
+
+   Die Tools kennen keinen Parameter `tage`; ein Zeitfenster wird über `from`/`to` bzw. `since` angegeben.
+
+   Verbindungstest (listet die Tools):
+
+   ```bash
+   curl -X POST https://<hostname>/mcp -H "Authorization: Bearer $OLAT_TOKEN" \
+     -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+   ```
+
 ### Speicherung der Anmeldedaten
 
 Passwörter werden mit AES-256-GCM verschlüsselt. Der Schlüssel wird per HKDF aus **dem Token des Nutzers**
@@ -133,7 +185,9 @@ src/olat/parse.ts      Kursbaum, Bausteininhalt, Ordnertabellen
 src/olat/client.ts     High-level Client (REST + Web + WebDAV)
 src/mcp/server.ts      MCP-Tools
 src/http/app.ts        REST-API, /mcp, Token-Verwaltung
-src/store/credentials.ts  Verschlüsselter Credential-Store
+src/store/credentials.ts  Verschlüsselter Credential-Store (Datei)
+src/store/stateless.ts    Zustandsloser Token-Store (Vercel)
+src/index.ts           Einstiegspunkt für Vercel
 ```
 
 Da Teile auf der HTML-Struktur von OpenOLAT basieren, können Updates der Plattform Anpassungen an

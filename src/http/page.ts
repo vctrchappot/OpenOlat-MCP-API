@@ -1,7 +1,7 @@
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /** Setup page where users deposit their OpenOLAT credentials and receive an API token. */
-export function registerPage(publicUrl: string, olatHost: string): string {
+export function registerPage(publicUrl: string, olatHost: string, revocable = true): string {
   const url = esc(publicUrl.replace(/\/$/, ''));
   return `<!doctype html>
 <html lang="de">
@@ -42,7 +42,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
     <input id="l" name="label" placeholder="z.B. Laptop / Claude Code">
     <button id="b" type="submit">Token erstellen</button>
     <p id="msg" role="status"></p>
-    <p class="muted">Das Passwort wird verschlüsselt gespeichert und kann nur mit deinem Token entschlüsselt werden. Das Token wird nur einmal angezeigt.</p>
+    <p class="muted">${revocable ? 'Das Passwort wird verschlüsselt gespeichert und kann nur mit deinem Token entschlüsselt werden.' : 'Das Passwort wird verschlüsselt im Token selbst abgelegt; auf dem Server wird nichts gespeichert.'} Das Token wird nur einmal angezeigt. Behandle es wie ein Passwort.</p>
   </form>
 
   <section class="card" id="out" hidden>
@@ -55,7 +55,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
     <pre id="js"></pre>
     <p><strong>REST-API</strong></p>
     <pre id="rest"></pre>
-    <p class="muted">Token widerrufen: <code>DELETE ${url}/api/tokens</code> mit demselben Authorization-Header.</p>
+    <p class="muted">${revocable ? 'Token widerrufen: <code>DELETE ' + url + '/api/tokens</code> mit demselben Authorization-Header.' : 'Dieses Token lässt sich nicht einzeln widerrufen. Bei Verlust: OpenOLAT-Passwort ändern oder den Betreiber bitten, das Server-Secret zu erneuern.'}</p>
   </section>
 </main>
 <script>

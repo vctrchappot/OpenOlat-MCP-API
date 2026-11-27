@@ -6,11 +6,11 @@ import { OlatAuthError, OlatError } from '../olat/errors.js';
 import type { OlatClientPool } from '../olat/pool.js';
 import { OlatRestClient } from '../olat/rest.js';
 import type { Credentials } from '../olat/web.js';
-import type { CredentialStore, TokenInfo } from '../store/credentials.js';
+import type { TokenInfo, TokenStore } from '../store/credentials.js';
 import { registerPage } from './page.js';
 
 export interface AppDeps {
-  store: CredentialStore;
+  store: TokenStore;
   pool: OlatClientPool;
   baseUrl: string;
   /** Public URL of this server (for the setup page). */
@@ -53,7 +53,7 @@ export function createApp(deps: AppDeps) {
 
   app.onError((e, c) => errorResponse(c, e));
 
-  app.get('/', (c) => c.html(registerPage(deps.publicUrl ?? new URL(c.req.url).origin, base.host)));
+  app.get('/', (c) => c.html(registerPage(deps.publicUrl ?? new URL(c.req.url).origin, base.host, deps.store.revocable)));
   app.get('/health', (c) => c.json({ ok: true }));
 
   // ------------------------------------------------------------------ credentials
@@ -94,6 +94,9 @@ export function createApp(deps: AppDeps) {
 
   app.get('/api/tokens', auth, (c) => c.json(deps.store.listForToken(c.get('token'))));
   app.delete('/api/tokens', auth, (c) => {
+    if (!deps.store.revocable) {
+      return c.json({ error: 'NotRevocable', message: 'Tokens dieses Servers sind zustandslos und lassen sich nicht einzeln widerrufen. Der Betreiber kann alle Tokens durch Ändern von OLAT_MCP_SECRET ungültig machen; alternativ das OpenOLAT-Passwort ändern.' }, 501);
+    }
     const resolved = deps.store.resolve(c.get('token'));
     const n = deps.store.revoke(c.get('token'), c.req.query('all') === 'true');
     if (resolved) deps.pool.drop(resolved.creds);

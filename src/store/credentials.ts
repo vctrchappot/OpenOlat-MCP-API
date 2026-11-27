@@ -29,6 +29,16 @@ export interface TokenInfo {
   lastUsedAt?: string;
 }
 
+/** What the HTTP app needs from a credential store. */
+export interface TokenStore {
+  /** False if tokens cannot be revoked individually (stateless store). */
+  readonly revocable: boolean;
+  create(creds: Credentials, label?: string): { token: string; info: TokenInfo };
+  resolve(token: string): { creds: Credentials; info: TokenInfo } | null;
+  revoke(token: string, allForUser?: boolean): number;
+  listForToken(token: string): TokenInfo[];
+}
+
 const TOKEN_RE = /^olat_([0-9a-f]{16})_([A-Za-z0-9_-]{43})$/;
 
 /**
@@ -39,7 +49,8 @@ const TOKEN_RE = /^olat_([0-9a-f]{16})_([A-Za-z0-9_-]{43})$/;
  * only be decrypted when the token is presented. The store itself keeps a SHA-256 hash of the
  * secret, never the token.
  */
-export class CredentialStore {
+export class CredentialStore implements TokenStore {
+  readonly revocable = true;
   private readonly file: string;
   private readonly serverSecret: Buffer;
   private data: FileShape;
