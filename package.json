@@ -1,7 +1,7 @@
 {
-  "name": "openolat-api-mcp",
+  "name": "openolat-mcp-api",
   "version": "1.0.0",
-  "description": "OpenOLAT API & MCP – read-only REST API and MCP server for OpenOLAT (olat.bms-w.ch)",
+  "description": "OpenOLAT MCP & API – read-only REST API and MCP server for OpenOLAT (olat.bms-w.ch)",
   "main": "dist/olat/client.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -31,7 +31,7 @@
     "vitest": "^5.1.2"
   },
   "bin": {
-    "openolat-api-mcp": "dist/cli.js"
+    "openolat-mcp-api": "dist/cli.js"
   },
   "files": [
     "dist"

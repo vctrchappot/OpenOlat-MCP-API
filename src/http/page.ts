@@ -8,7 +8,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenOLAT API & MCP</title>
+<title>OpenOLAT MCP & API</title>
 <style>
   :root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#5b6470; --line:#d9dde3; --accent:#0b5cad; --ok:#0f7b3f; --err:#b42318; --code:#eef1f5; }
   @media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1f25; --fg:#e7eaee; --muted:#9aa4b1; --line:#2c333c; --accent:#6aa9ff; --ok:#4cc38a; --err:#ff7b72; --code:#232a32; } }
@@ -30,7 +30,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
 </head>
 <body>
 <main>
-  <h1>OpenOLAT API &amp; MCP – Zugang einrichten</h1>
+  <h1>OpenOLAT MCP &amp; API – Zugang einrichten</h1>
   <p class="lead">Hinterlege deine Anmeldedaten für <strong>${esc(olatHost)}</strong>. Du erhältst ein persönliches Token, mit dem die API bzw. dein KI-Agent <strong>nur lesend</strong> auf deine OpenOLAT-Inhalte zugreift.</p>
 
   <form class="card" id="f">
