@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { CourseTreeNode, OlatClient, ReadFileResult } from '../olat/client.js';
 import { OlatError } from '../olat/errors.js';
 
-export const SERVER_NAME = 'bmsw-olat';
+export const SERVER_NAME = 'openolat';
 export const SERVER_VERSION = '1.0.0';
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const;

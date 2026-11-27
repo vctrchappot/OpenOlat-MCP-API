@@ -16,7 +16,7 @@ export interface WebPage {
   title: string;
 }
 
-const USER_AGENT = 'bmsw-olat-mcp/1.0 (read-only; +https://github.com/vctrchappot)';
+const USER_AGENT = 'openolat-api-mcp/1.0 (read-only; +https://github.com/vctrchappot)';
 const TIMEOUT_MS = 45_000;
 
 /**

@@ -8,7 +8,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OLAT MCP Zugang</title>
+<title>OpenOLAT API & MCP</title>
 <style>
   :root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#5b6470; --line:#d9dde3; --accent:#0b5cad; --ok:#0f7b3f; --err:#b42318; --code:#eef1f5; }
   @media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1f25; --fg:#e7eaee; --muted:#9aa4b1; --line:#2c333c; --accent:#6aa9ff; --ok:#4cc38a; --err:#ff7b72; --code:#232a32; } }
@@ -30,7 +30,7 @@ export function registerPage(publicUrl: string, olatHost: string): string {
 </head>
 <body>
 <main>
-  <h1>OpenOLAT MCP – Zugang einrichten</h1>
+  <h1>OpenOLAT API &amp; MCP – Zugang einrichten</h1>
   <p class="lead">Hinterlege deine Anmeldedaten für <strong>${esc(olatHost)}</strong>. Du erhältst ein persönliches Token, mit dem die API bzw. dein KI-Agent <strong>nur lesend</strong> auf deine OpenOLAT-Inhalte zugreift.</p>
 
   <form class="card" id="f">
@@ -69,8 +69,8 @@ f.addEventListener('submit', async (e) => {
     f.hidden = true; document.getElementById('out').hidden = false;
     document.getElementById('who').textContent = data.user.name;
     document.getElementById('tok').textContent = data.token;
-    document.getElementById('cc').textContent = 'claude mcp add --transport http olat ${url}/mcp --header "Authorization: Bearer ' + data.token + '"';
-    document.getElementById('js').textContent = JSON.stringify({ mcpServers: { olat: { type: 'http', url: '${url}/mcp', headers: { Authorization: 'Bearer ' + data.token } } } }, null, 2);
+    document.getElementById('cc').textContent = 'claude mcp add --transport http openolat ${url}/mcp --header "Authorization: Bearer ' + data.token + '"';
+    document.getElementById('js').textContent = JSON.stringify({ mcpServers: { openolat: { type: 'http', url: '${url}/mcp', headers: { Authorization: 'Bearer ' + data.token } } } }, null, 2);
     document.getElementById('rest').textContent = 'curl -H "Authorization: Bearer ' + data.token + '" ${url}/api/courses';
   } catch (err) { msg.textContent = err.message; msg.className = 'err'; }
   finally { b.disabled = false; }
