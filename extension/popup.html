@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OLAT Auto-Login</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>OLAT Auto-Login</h1>
+  <p id="status" class="status" role="status">Lädt …</p>
+  <button id="resume" type="button" class="secondary" hidden>Auto-Login wieder aktivieren</button>
+
+  <form id="creds" autocomplete="off">
+    <label for="u">OLAT-Benutzername</label>
+    <input id="u" name="username" autocomplete="off" required>
+    <label for="p">Passwort</label>
+    <input id="p" name="password" type="password" autocomplete="new-password" required>
+    <div class="row">
+      <button id="save" type="submit">Speichern</button>
+      <button id="clear" type="button" class="secondary" hidden>Löschen</button>
+    </div>
+    <p id="msg" class="msg" role="status"></p>
+  </form>
+
+  <fieldset>
+    <legend>Einstellungen</legend>
+    <label class="check"><input type="checkbox" data-setting="autoLogin"> Auf der Login-Seite automatisch anmelden</label>
+    <label class="check"><input type="checkbox" data-setting="keepAlive"> Sitzung alle 5 Minuten wachhalten</label>
+    <label class="check"><input type="checkbox" data-setting="persistCookies"> Sitzung über Browser-Neustart behalten</label>
+  </fieldset>
+
+  <button id="open" type="button" class="secondary">OLAT öffnen</button>
+  <p class="hint">Die Zugangsdaten bleiben verschlüsselt in diesem Browser und werden nur an olat.bms-w.ch verwendet.</p>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

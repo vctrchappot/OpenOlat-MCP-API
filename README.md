@@ -124,6 +124,12 @@ und dem Server-Secret (`OLAT_MCP_SECRET` oder `data/server.key`) abgeleitet. Auf
 SHA-256-Hash des Tokens – ohne Token lassen sich die Passwörter nicht entschlüsseln. Widerruf:
 `DELETE /api/tokens` (mit `?all=true` alle Tokens des Nutzers).
 
+## Chrome-Erweiterung: nie wieder manuell bei OLAT einloggen
+
+Im Ordner [`extension/`](extension/README.md) liegt eine Chrome-Erweiterung (Manifest V3), die sich auf olat.bms-w.ch automatisch
+anmeldet, das Sitzungs-Cookie über Browser-Neustarts behält und die Sitzung wachhält. Installation und Sicherheitshinweise:
+[extension/README.md](extension/README.md).
+
 ## MCP-Tools
 
 | Tool | Beschreibung |
