@@ -1,8 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import type { CourseTreeNode, OlatClient, ReadFileResult } from '../olat/client.js';
+import type { CourseNodeView, CourseTreeNode, FolderView, OlatClient, ReadFileResult } from '../olat/client.js';
 import { OlatError } from '../olat/errors.js';
+import { fetchByUrl, type FetchResult } from '../olat/fetch-url.js';
 
 export const SERVER_NAME = 'openolat';
 export const SERVER_VERSION = '1.0.0';
@@ -51,6 +52,49 @@ export function fileResult(r: ReadFileResult): CallToolResult {
   return out;
 }
 
+export function renderNode(v: CourseNodeView): string {
+  const parts = [`# ${v.title}`, `Typ: ${v.type || 'unbekannt'} · ${v.url}`];
+  if (!v.opened) parts.push('⚠️ OpenOLAT hat einen anderen Baustein angezeigt – evtl. kein Zugriff oder (noch) gesperrt.');
+  if (v.markdown) parts.push(v.markdown);
+  if (!v.files.length && v.downloadable) parts.push('Dieser Baustein stellt eine Datei zum Download bereit → olat_read_file(courseId, nodeId).');
+  if (v.files.length) parts.push(`## Dateien (olat_read_file mit fileIndex)\n${v.files.map((f, i) => `${i}. ${f.name}`).join('\n')}`);
+  if (v.folder) parts.push(`## Ordnerinhalt\n${renderFolder(v.folder)}`);
+  if (v.children.length) parts.push(`## Unterbausteine\n${v.children.map((c) => `- ${c.title} [${c.id}]${c.type ? ` (${c.type})` : ''}`).join('\n')}`);
+  return parts.join('\n\n');
+}
+
+function renderFolder(f: FolderView): string {
+  return `${f.entries.map((e) => `- ${e.kind === 'folder' ? '📁' : '📄'} ${e.name}${e.size ? ` (${e.size})` : ''}`).join('\n')}${f.truncated ? '\n… (weitere Einträge, siehe olat_list_folder)' : ''}`;
+}
+
+/** Turns the result of `fetchByUrl` into tool output; the first line names the action that was chosen. */
+export function renderFetch(r: FetchResult): CallToolResult {
+  const head = (action: string, note = '') => `Aktion: ${action}${note ? ` – ${note}` : ''}`;
+  switch (r.action) {
+    case 'info_messages':
+      return text(`${head('info_messages', `${r.messages.length} Mitteilung(en), neueste zuerst`)}\n# ${r.title}\n${r.url}\n\n${JSON.stringify(r.messages, null, 2)}`);
+    case 'landing_page':
+      return text(`${head('landing_page', `${r.page.lessons.length} Lektion(en) ab ${r.page.from}`)}\n${JSON.stringify(r.page, null, 2)}`);
+    case 'folder':
+      return text(`${head('folder')}\n# ${r.title}\n${r.url}\n\n${renderFolder(r.folder)}`);
+    case 'calendar':
+      return text(`${head('calendar', `${r.events.length} Termin(e)`)}\n# ${r.title}\n${r.url}\n\n${JSON.stringify(r.events, null, 2)}`);
+    case 'course':
+      return text(`${head('course')}\n${JSON.stringify(r.course, null, 2)}\n\n## Struktur\n${renderTree(r.tree)}`);
+    case 'node':
+      return text(`${head('node')}\n${renderNode(r.node)}`);
+    case 'page': {
+      const files = r.page.files.length ? `\n\n## Dateien (olat_fetch_resource)\n${r.page.files.map((f) => `- ${f.name}: ${f.url}`).join('\n')}` : '';
+      return text(`${head('page')}\n# ${r.page.title}\n${r.page.url}\n\n${r.page.markdown}${files}`);
+    }
+    case 'file': {
+      const out = fileResult(r.file);
+      out.content.unshift({ type: 'text', text: head('file') });
+      return out;
+    }
+  }
+}
+
 /** Creates an MCP server whose tools all read from OpenOLAT through the given client. */
 export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient>): McpServer {
   const server = new McpServer(
@@ -58,6 +102,7 @@ export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient
     {
       instructions: [
         'Read-only Zugriff auf OpenOLAT der BMS Winterthur (olat.bms-w.ch) mit den Rechten des angemeldeten Lernenden.',
+        'Hast du schon eine OLAT-URL (Browser, Mitteilung, Landing Page)? Dann olat_fetch(url): es wählt die passende lesende Aktion selbst und nennt sie in der ersten Zeile.',
         'Typischer Ablauf: olat_list_courses → olat_get_course_tree(courseId) → olat_get_course_node(courseId, nodeId) → olat_read_file / olat_list_folder.',
         'Für Termine olat_list_calendar_events, für Neuigkeiten olat_get_notifications (mit Text der Mitteilungen). Für Lektionspläne einer "Landing Page" olat_get_landing_page, für Hausaufgaben-Mitteilungen eines Bausteins olat_get_info_messages. Alle Tools sind lesend; es werden keine Daten verändert.',
         'Hinweis: Das Öffnen eines Kursbausteins zählt in OpenOLAT als Besuch (wie im Browser) und kann in Lernpfad-Kursen den Fortschritt "besucht" setzen. olat_get_course_tree öffnet keine Bausteine.',
@@ -133,16 +178,45 @@ export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient
       annotations: READ_ONLY,
     },
     ({ courseId, nodeId }) =>
+      safe(async () => text(renderNode(await (await getClient()).getCourseNode(courseId, nodeId)))),
+  );
+
+  server.registerTool(
+    'olat_fetch',
+    {
+      title: 'OLAT-URL lesen (automatisch)',
+      description:
+        'Nimmt eine OLAT-URL (z.B. aus dem Browser, einer Mitteilung oder einer Landing Page) und führt die passende lesende Aktion aus: ' +
+        'Baustein "Aufgaben / Mitteilungen" → Mitteilungen mit Text; Baustein mit eingebetteter Landing Page → Lektionsplan; Ordner → Dateiliste (mit path: Unterordner oder Datei); ' +
+        'Dokument/Datei → Inhalt als Text; Kalender-Baustein → Termine; Seite → Markdown; Kurs-URL → Kursinfo und Struktur; /m/…-Ressource oder WebDAV → Datei. ' +
+        'Auch die URL einer freigegebenen Landing Page selbst funktioniert. Die erste Zeile der Antwort nennt die gewählte Aktion. Optionale Argumente: from/to (Lektionen, Termine), since (Mitteilungen), path/fileIndex (Ordner, Dateien).',
+      inputSchema: {
+        url: z.string().min(1).optional().describe('OLAT-URL oder -Pfad, z.B. https://olat.bms-w.ch/auth/RepositoryEntry/123/CourseNode/456'),
+        urls: z.array(z.string().min(1)).max(5).optional().describe('Mehrere URLs auf einmal (höchstens 5); die Ergebnisse stehen nacheinander'),
+        from: z.string().optional().describe('ISO-Datum; Beginn für Lektionen und Termine (Standard heute)'),
+        to: z.string().optional().describe('ISO-Datum; Ende für Lektionen und Termine'),
+        since: z.string().optional().describe('ISO-Datum; nur Mitteilungen ab diesem Tag'),
+        path: z.string().optional().describe('Unterordner oder Datei in einem Ordner-Baustein, z.B. "Kapitel 1/Übungen.pdf"'),
+        fileIndex: z.coerce.number().int().min(0).optional().describe('Nummer der Datei, wenn ein Baustein mehrere zeigt'),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ url, urls, ...opts }) =>
       safe(async () => {
-        const v = await (await getClient()).getCourseNode(courseId, nodeId);
-        const parts = [`# ${v.title}`, `Typ: ${v.type || 'unbekannt'} · ${v.url}`];
-        if (!v.opened) parts.push('⚠️ OpenOLAT hat einen anderen Baustein angezeigt – evtl. kein Zugriff oder (noch) gesperrt.');
-        if (v.markdown) parts.push(v.markdown);
-        if (!v.files.length && v.downloadable) parts.push('Dieser Baustein stellt eine Datei zum Download bereit → olat_read_file(courseId, nodeId).');
-        if (v.files.length) parts.push(`## Dateien (olat_read_file mit fileIndex)\n${v.files.map((f, i) => `${i}. ${f.name}`).join('\n')}`);
-        if (v.folder) parts.push(`## Ordnerinhalt\n${v.folder.entries.map((e) => `- ${e.kind === 'folder' ? '📁' : '📄'} ${e.name}${e.size ? ` (${e.size})` : ''}`).join('\n')}${v.folder.truncated ? '\n… (weitere Einträge, siehe olat_list_folder)' : ''}`);
-        if (v.children.length) parts.push(`## Unterbausteine\n${v.children.map((c) => `- ${c.title} [${c.id}]${c.type ? ` (${c.type})` : ''}`).join('\n')}`);
-        return text(parts.join('\n\n'));
+        const list = [...(url ? [url] : []), ...(urls ?? [])];
+        if (!list.length) return { isError: true, content: [{ type: 'text', text: 'Bitte url oder urls angeben.' }] };
+        const client = await getClient();
+        const out: CallToolResult = { content: [] };
+        for (const [i, u] of list.entries()) {
+          if (list.length > 1) out.content.push({ type: 'text', text: `${i ? '\n' : ''}======== ${i + 1}/${list.length}: ${u.replace(/\?.*$/, '')} ========` });
+          try {
+            out.content.push(...renderFetch(await fetchByUrl(client, u, opts)).content);
+          } catch (e) {
+            if (list.length === 1) throw e;
+            out.content.push({ type: 'text', text: `Fehler: ${e instanceof OlatError ? e.message : (e as Error).message}` });
+          }
+        }
+        return out;
       }),
   );
 

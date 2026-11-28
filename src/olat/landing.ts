@@ -34,6 +34,11 @@ export function landingDataUrl(candidates: string[], allowedHosts: string[]): UR
   return null;
 }
 
+/** URLs of an opened course node that may be an embedded landing page. */
+export function embedCandidates(node: { files: { url: string }[]; links: { url: string }[]; markdown: string }): string[] {
+  return [...node.files.map((f) => f.url), ...node.links.map((l) => l.url), ...(node.markdown.match(/https?:\/\/[^\s)\]]+/g) ?? [])];
+}
+
 export async function fetchLandingFile(url: URL, allowedHosts: string[]): Promise<Buffer> {
   if (url.protocol !== 'https:' || !allowedHosts.map((h) => h.toLowerCase()).includes(url.hostname.toLowerCase())) {
     throw new OlatError(`Host ${url.hostname} ist für Landing Pages nicht freigegeben (OLAT_EXTERNAL_HOSTS).`, 403);

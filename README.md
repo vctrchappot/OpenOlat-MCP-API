@@ -113,7 +113,13 @@ vercel deploy --prod
    | Lektionsplan (Landing Page) | `olat_get_landing_page` | `{"courseId":54722567,"nodeId":"114484039180847"}` (Beispiel Deutsch; ab heute) |
    | Eingebettete OLAT-Seite (z.B. Français) | `olat_get_course_node` | `{"courseId":54722678,"nodeId":"114484040726526"}` |
 
-   Für eine Landing Page oder Mitteilungen in WorkTrack: Integration mit dieser MCP-Adresse anlegen, dann pro Seite eine Quelle mit
+   **Am einfachsten mit `olat_fetch`:** In der Integration als Werkzeug `olat_fetch` und als Standardargumente `{"url": "{path}"}` eintragen.
+   Pro Quelle steht dann nur die OLAT-Adresse (zweimal: bei *Adresse* und bei *Pfad*), zum Beispiel
+   `https://olat.bms-w.ch/auth/RepositoryEntry/12648576/CourseNode/114484000378050`. Der Server erkennt am Baustein, ob es
+   Mitteilungen, eine Landing Page, ein Ordner oder eine Datei ist. Zusätzliche Argumente (z.B. `{"url": "{path}", "since": "2026-11-01"}`)
+   gehören in das Feld *Argumente* der Quelle.
+
+   Alternativ mit festen Werkzeugen, für eine Landing Page oder Mitteilungen in WorkTrack: Integration mit dieser MCP-Adresse anlegen, dann pro Seite eine Quelle mit
    dem Werkzeug und den festen Argumenten aus der Tabelle. `olat_open_page` liefert bei eingebetteten Seiten nur den Rahmen,
    dafür `olat_get_course_node` bzw. `olat_get_landing_page` verwenden.
 
@@ -144,6 +150,7 @@ anmeldet, das Sitzungs-Cookie über Browser-Neustarts behält und die Sitzung wa
 
 | Tool | Beschreibung |
 | --- | --- |
+| `olat_fetch` | **URL rein, passende Aktion raus:** nimmt eine OLAT-URL (oder `urls`, bis 5) und wählt selbst: Mitteilungen, Landing-Page-Lektionsplan, Ordner, Dokument, Kalender, Seite, Kurs. Optionale Argumente `from`, `to`, `since`, `path`, `fileIndex`. Die erste Zeile der Antwort nennt die Aktion |
 | `olat_whoami` | Angemeldeter Benutzer |
 | `olat_list_courses` | Eigene Kurse (`my`) oder Favoriten |
 | `olat_search_courses` | Suche in allen sichtbaren Kursen |

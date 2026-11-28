@@ -41,6 +41,7 @@ describe('HTTP app with the stateless store (Vercel)', () => {
     expect(names).toContain('olat_get_notifications');
     expect(names).toContain('olat_get_landing_page');
     expect(names).toContain('olat_get_info_messages');
+    expect(names).toContain('olat_fetch');
     expect(result.tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
   });
 
