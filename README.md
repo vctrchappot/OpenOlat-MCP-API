@@ -26,7 +26,10 @@ kombiniert daher drei Zugänge, jeweils mit den Rechten des Nutzers:
   blockiert (`assertSafeGet`).
 - UI-Events (POST) laufen durch eine enge Allowlist (`assertReadOnlyEvent` in `src/olat/events.ts`): nur
   *Kursbaum aufklappen* und *Herunterladen*. Alles andere wirft `ReadOnlyViolation`.
-- Einzige Ausnahme: das Login-Formular.
+- Einzige Ausnahmen: das Login-Formular und `olat_get_landing_page` (siehe unten).
+- **Landing Pages** (`olat_get_landing_page`): Nur `GET`, nur `https`, nur Hosts aus `OLAT_EXTERNAL_HOSTS` (Standard
+  `landingpage.bmsw-server.ch`, leer = abgeschaltet). Die Daten-URL (`/data/<id>.xlsx`) baut der Server selbst aus der
+  validierten `id` des OLAT-Embeds, sie kommt nie ungeprüft aus der Seite. Umleitungen und Dateien über 5 MB werden abgelehnt.
 
 > **Hinweis:** Das Öffnen eines Kursbausteins ist für OpenOLAT ein normaler Besuch (wie im Browser) und
 > kann in **Lernpfad-Kursen** den Status „besucht/erledigt“ setzen. `olat_get_course_tree` klappt den Baum
@@ -106,6 +109,13 @@ vercel deploy --prod
    | Termine | `olat_list_calendar_events` | `{"from":"2026-01-01","to":"2026-01-15"}` (ISO-Datum, beide optional; Standard: ab heute, 60 Tage) |
    | Neuigkeiten | `olat_get_notifications` | `{"since":"2026-01-01"}` (ISO-Datum, optional; Standard: letzte 7 Tage) |
    | Kurse | `olat_list_courses` | `{}` |
+   | Hausaufgaben-Mitteilungen | `olat_get_info_messages` | `{"courseId":12648576,"nodeId":"114484000378050"}` (Beispiel Mathe; IDs stehen in der OLAT-Adresse `…/RepositoryEntry/<courseId>/CourseNode/<nodeId>`) |
+   | Lektionsplan (Landing Page) | `olat_get_landing_page` | `{"courseId":54722567,"nodeId":"114484039180847"}` (Beispiel Deutsch; ab heute) |
+   | Eingebettete OLAT-Seite (z.B. Français) | `olat_get_course_node` | `{"courseId":54722678,"nodeId":"114484040726526"}` |
+
+   Für eine Landing Page oder Mitteilungen in WorkTrack: Integration mit dieser MCP-Adresse anlegen, dann pro Seite eine Quelle mit
+   dem Werkzeug und den festen Argumenten aus der Tabelle. `olat_open_page` liefert bei eingebetteten Seiten nur den Rahmen,
+   dafür `olat_get_course_node` bzw. `olat_get_landing_page` verwenden.
 
    Die Tools kennen keinen Parameter `tage`; ein Zeitfenster wird über `from`/`to` bzw. `since` angegeben.
 
@@ -146,7 +156,9 @@ anmeldet, das Sitzungs-Cookie über Browser-Neustarts behält und die Sitzung wa
 | `olat_open_page` | Beliebige OpenOLAT-Seite per Business-Pfad, z.B. Leistungsnachweise |
 | `olat_list_groups` | Gruppen/Klassen |
 | `olat_list_calendar_events` | Termine aus allen Kalendern (Prüfungen etc.) |
-| `olat_get_notifications` | Neuigkeiten aus Abonnements |
+| `olat_get_notifications` | Neuigkeiten aus Abonnements; bei Mitteilungen steht der Text unter `message` (z.B. Hausaufgaben) |
+| `olat_get_info_messages` | Mitteilungen eines Bausteins «Aufgaben / Mitteilungen» mit Titel, Datum und Text, optional `since` |
+| `olat_get_landing_page` | Lektionsplan einer eingebetteten Landing Page (z.B. «Landing Page Deutsch»): kommende Lektionen mit Thema, Material, Aufgaben (Abgabe/LNW), Lernzielen; `from`/`to` optional, Standard ab heute |
 | `olat_list_webdav`, `olat_read_webdav_file` | Gruppenordner, persönlicher Ordner, Dokumentenpool |
 
 Alle Tools sind mit `readOnlyHint: true` annotiert.

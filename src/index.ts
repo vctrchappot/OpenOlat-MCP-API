@@ -13,7 +13,7 @@ app.route(
   '/',
   createApp({
     store: createTokenStore(cfg),
-    pool: new OlatClientPool({ baseUrl: cfg.baseUrl, maxDownloadBytes: cfg.maxDownloadBytes, maxInlineBinaryBytes: cfg.maxInlineBinaryBytes }),
+    pool: new OlatClientPool({ baseUrl: cfg.baseUrl, maxDownloadBytes: cfg.maxDownloadBytes, maxInlineBinaryBytes: cfg.maxInlineBinaryBytes, externalHosts: cfg.externalHosts }),
     baseUrl: cfg.baseUrl,
     publicUrl: cfg.publicUrl,
   }),

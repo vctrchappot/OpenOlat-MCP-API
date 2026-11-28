@@ -11,6 +11,8 @@ export interface Config {
   storeMode: 'file' | 'stateless';
   secret?: string;
   publicUrl?: string;
+  /** Hosts whose embedded landing pages may be read (GET only). */
+  externalHosts: string[];
   maxDownloadBytes: number;
   maxInlineBinaryBytes: number;
 }
@@ -25,6 +27,7 @@ export function loadConfig(env = process.env): Config {
     storeMode: (env.STORE ?? (env.VERCEL ? 'stateless' : 'file')) === 'stateless' ? 'stateless' : 'file',
     secret: env.OLAT_MCP_SECRET || undefined,
     publicUrl: env.PUBLIC_URL || undefined,
+    externalHosts: (env.OLAT_EXTERNAL_HOSTS ?? 'landingpage.bmsw-server.ch').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
     maxDownloadBytes: Number(env.MAX_DOWNLOAD_MB ?? 30) * 1024 * 1024,
     maxInlineBinaryBytes: Number(env.MAX_INLINE_MB ?? 4) * 1024 * 1024,
   };

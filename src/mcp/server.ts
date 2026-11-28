@@ -59,7 +59,7 @@ export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient
       instructions: [
         'Read-only Zugriff auf OpenOLAT der BMS Winterthur (olat.bms-w.ch) mit den Rechten des angemeldeten Lernenden.',
         'Typischer Ablauf: olat_list_courses → olat_get_course_tree(courseId) → olat_get_course_node(courseId, nodeId) → olat_read_file / olat_list_folder.',
-        'Für Termine olat_list_calendar_events, für Neuigkeiten olat_get_notifications. Alle Tools sind lesend; es werden keine Daten verändert.',
+        'Für Termine olat_list_calendar_events, für Neuigkeiten olat_get_notifications (mit Text der Mitteilungen). Für Lektionspläne einer "Landing Page" olat_get_landing_page, für Hausaufgaben-Mitteilungen eines Bausteins olat_get_info_messages. Alle Tools sind lesend; es werden keine Daten verändert.',
         'Hinweis: Das Öffnen eines Kursbausteins zählt in OpenOLAT als Besuch (wie im Browser) und kann in Lernpfad-Kursen den Fortschritt "besucht" setzen. olat_get_course_tree öffnet keine Bausteine.',
       ].join('\n'),
     },
@@ -198,6 +198,40 @@ export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient
   );
 
   server.registerTool(
+    'olat_get_info_messages',
+    {
+      title: 'Mitteilungen eines Kursbausteins',
+      description:
+        'Liest die Mitteilungen eines Bausteins "Aufgaben / Mitteilungen" (info-messages) mit Titel, Datum und Text, neueste zuerst, z.B. Hausaufgaben. Optional nur ab einem Datum.',
+      inputSchema: { courseId, nodeId, since: z.string().optional().describe('ISO-Datum; nur Mitteilungen, die an oder nach diesem Tag veröffentlicht oder geändert wurden') },
+      annotations: READ_ONLY,
+    },
+    ({ courseId: c, nodeId: n, since }) =>
+      safe(async () => {
+        const all = await (await getClient()).getInfoMessages(c, n);
+        return json(since ? all.filter((m) => (m.edited ?? m.published ?? '9999') >= since.slice(0, 10)) : all);
+      }),
+  );
+
+  server.registerTool(
+    'olat_get_landing_page',
+    {
+      title: 'Landing Page (Lektionsplan)',
+      description:
+        'Liest die Landing Page eines Kursbausteins (z.B. "Landing Page Deutsch"), die eine Lektionsübersicht der Lehrperson von einem freigegebenen externen Host einbettet: kommende Lektionen mit Thema, Material, Aufgaben (inkl. Abgabe/LNW) und Lernzielen. Standard: ab heute. Farben stehen als [rot]/[neu]/[entfällt] hinter dem Text.',
+      inputSchema: {
+        courseId,
+        nodeId,
+        from: z.string().optional().describe('ISO-Datum, Standard heute'),
+        to: z.string().optional().describe('ISO-Datum, Standard: keine Obergrenze'),
+      },
+      annotations: READ_ONLY,
+    },
+    ({ courseId: c, nodeId: n, from, to }) =>
+      safe(async () => json(await (await getClient()).getLandingPage(c, n, { from: from?.slice(0, 10), to: to?.slice(0, 10) }))),
+  );
+
+  server.registerTool(
     'olat_list_groups',
     { title: 'Gruppen', description: 'Gruppen (Klassen, Lerngruppen), in denen der Benutzer Mitglied ist.', inputSchema: {}, annotations: READ_ONLY },
     () => safe(async () => json(await (await getClient()).listGroups())),
@@ -239,15 +273,22 @@ export function createMcpServer(getClient: () => OlatClient | Promise<OlatClient
     'olat_get_notifications',
     {
       title: 'Neuigkeiten',
-      description: 'Neuigkeiten aus Abonnements (Mitteilungen, neue Dateien, Forenbeiträge …) seit einem Datum (Standard: letzte 7 Tage).',
+      description:
+        'Neuigkeiten aus Abonnements (Mitteilungen, neue Dateien, Forenbeiträge …) seit einem Datum (Standard: letzte 7 Tage). Bei Mitteilungen steht der Text unter "message" (z.B. Hausaufgaben).',
       inputSchema: { since: z.string().optional().describe('ISO-Datum') },
       annotations: READ_ONLY,
     },
     ({ since }) =>
       safe(async () => {
         const d = since ? new Date(since) : new Date(Date.now() - 7 * 86_400_000);
-        const n = await (await getClient()).notifications(d);
-        return json(n.map((s) => ({ type: s.type, title: s.title, items: s.items.map((i) => ({ date: new Date(i.date).toISOString(), text: i.description, link: i.link })) })));
+        const n = await (await getClient()).notificationsWithMessages(d);
+        return json(
+          n.map((s) => ({
+            type: s.type,
+            title: s.title,
+            items: s.items.map((i) => ({ date: new Date(i.date).toISOString(), text: i.description, link: i.link, ...(i.message ? { message: { title: i.message.title, publishedBy: i.message.publishedBy, published: i.message.published, edited: i.message.edited, text: i.message.text.slice(0, 2000) } } : {}) })),
+          })),
+        );
       }),
   );
 
