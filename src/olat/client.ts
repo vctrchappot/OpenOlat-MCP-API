@@ -2,7 +2,10 @@ import * as cheerio from 'cheerio';
 import { commandHtml, commandRedirect } from './commands.js';
 import { extractContent, type ExtractedContent, type FileData } from './content.js';
 import { NotFoundError, OlatError } from './errors.js';
+import { infoMessageTarget, matchInfoMessage, parseInfoMessages, type InfoMessage } from './infomessages.js';
+import { DEFAULT_EXTERNAL_HOSTS, fetchLandingFile, landingDataUrl, parseLanding, type LandingPage } from './landing.js';
 import { htmlToMarkdown, type LinkRef } from './markdown.js';
+import { readXlsx } from './office.js';
 import { parseCourseTree, parseFolder, parseNodeContent, type FileRef, type FolderEntry, type TreeNode } from './parse.js';
 import { OlatRestClient, type RestCalendar, type RestCourse, type RestEvent, type RestGroup, type RestNotification, type RestUser } from './rest.js';
 import { OlatWebDavClient, type DavEntry } from './webdav.js';
@@ -14,6 +17,8 @@ export interface OlatClientOptions {
   maxDownloadBytes?: number;
   /** Max. bytes of binary content returned inline (base64). */
   maxInlineBinaryBytes?: number;
+  /** Hosts whose embedded landing pages may be read (GET only). Default: the school's landing page server. */
+  externalHosts?: string[];
 }
 
 export interface CourseSummary {
@@ -108,6 +113,7 @@ export class OlatClient {
   readonly dav: OlatWebDavClient;
   private readonly maxDownload: number;
   private readonly maxInline: number;
+  private readonly externalHosts: string[] | undefined;
   private me?: RestUser;
   private trees = new Map<number, { at: number; nodes: TreeNode[] }>();
   private catalog?: { at: number; courses: RestCourse[] };
@@ -122,6 +128,7 @@ export class OlatClient {
     this.dav = new OlatWebDavClient(this.base, creds);
     this.maxDownload = opts.maxDownloadBytes ?? 30 * 1024 * 1024;
     this.maxInline = opts.maxInlineBinaryBytes ?? 4 * 1024 * 1024;
+    this.externalHosts = opts.externalHosts;
   }
 
   // ---------------------------------------------------------------- user & courses (REST)
@@ -212,6 +219,57 @@ export class OlatClient {
   /** News from subscriptions (info messages, forum posts, new files, …) since `since`. */
   async notifications(since: Date): Promise<RestNotification[]> {
     return this.rest.get<RestNotification[]>('notifications', { date: since.toISOString().slice(0, 19) });
+  }
+
+  /**
+   * Like `notifications`, but info-message items carry the message text. The feed itself only announces
+   * "Mitteilung X veröffentlicht"; the text is read from the course node (each node once, at most 8 nodes).
+   */
+  async notificationsWithMessages(since: Date): Promise<(Omit<RestNotification, 'items'> & { items: (RestNotification['items'][number] & { message?: InfoMessage })[] })[]> {
+    const feeds = await this.notifications(since);
+    const loaded = new Map<string, Promise<InfoMessage[] | null>>();
+    const load = (courseId: number, nodeId: string) => {
+      const key = `${courseId}/${nodeId}`;
+      if (!loaded.has(key) && loaded.size < 8) loaded.set(key, this.getInfoMessages(courseId, nodeId).catch(() => null));
+      return loaded.get(key);
+    };
+    return Promise.all(
+      feeds.map(async (feed) => ({
+        ...feed,
+        items: await Promise.all(
+          feed.items.map(async (item) => {
+            const target = infoMessageTarget(item.link);
+            const messages = target ? await load(target.courseId, target.nodeId) : null;
+            const message = messages ? matchInfoMessage(messages, item) : undefined;
+            return message ? { ...item, message } : item;
+          }),
+        ),
+      })),
+    );
+  }
+
+  /** The messages of an "Aufgaben / Mitteilungen" course node, newest first. */
+  async getInfoMessages(courseId: number, nodeId: string): Promise<InfoMessage[]> {
+    const node = await this.getCourseNode(courseId, nodeId);
+    if (!node.opened) throw new NotFoundError(`Baustein ${nodeId} ist nicht zugänglich.`);
+    return parseInfoMessages(node.markdown);
+  }
+
+  /**
+   * Reads the data of an embedded landing page (course node with an external page of an allowed host):
+   * upcoming lessons with topic, material, tasks and goals. Only GET on the allow-listed host.
+   */
+  async getLandingPage(courseId: number, nodeId: string, opts: { from?: string; to?: string } = {}): Promise<LandingPage> {
+    const hosts = this.externalHosts ?? DEFAULT_EXTERNAL_HOSTS;
+    const node = await this.getCourseNode(courseId, nodeId);
+    const candidates = [...node.files.map((f) => f.url), ...node.links.map((l) => l.url), ...(node.markdown.match(/https?:\/\/[^\s)\]]+/g) ?? [])];
+    const url = landingDataUrl(candidates, hosts);
+    if (!url) {
+      throw new NotFoundError(`Der Baustein "${node.title}" bettet keine Landing Page eines freigegebenen Hosts ein (erlaubt: ${hosts.join(', ') || 'keiner'}).`);
+    }
+    const sheets = readXlsx(await fetchLandingFile(url, hosts));
+    if (!sheets) throw new OlatError('Die Landing-Page-Datei ist kein lesbares Excel.', 502);
+    return parseLanding(sheets, opts);
   }
 
   // ---------------------------------------------------------------- course structure (web UI)

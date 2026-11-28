@@ -11,6 +11,12 @@ describe('loadConfig store mode', () => {
     expect(loadConfig({ VERCEL: '1', STORE: 'file' }).storeMode).toBe('file');
     expect(loadConfig({ STORE: 'stateless' }).storeMode).toBe('stateless');
   });
+
+  it('allows only the school landing page host by default', () => {
+    expect(loadConfig({}).externalHosts).toEqual(['landingpage.bmsw-server.ch']);
+    expect(loadConfig({ OLAT_EXTERNAL_HOSTS: ' A.example, b.example ' }).externalHosts).toEqual(['a.example', 'b.example']);
+    expect(loadConfig({ OLAT_EXTERNAL_HOSTS: '' }).externalHosts).toEqual([]);
+  });
 });
 
 describe('HTTP app with the stateless store (Vercel)', () => {
@@ -33,6 +39,8 @@ describe('HTTP app with the stateless store (Vercel)', () => {
     const names = result.tools.map((t) => t.name);
     expect(names).toContain('olat_list_calendar_events');
     expect(names).toContain('olat_get_notifications');
+    expect(names).toContain('olat_get_landing_page');
+    expect(names).toContain('olat_get_info_messages');
     expect(result.tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
   });
 

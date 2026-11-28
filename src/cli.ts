@@ -23,10 +23,10 @@ Befehle:
   serve           HTTP-Server: REST-API, MCP-Endpoint /mcp, Setup-Seite /
 
 Umgebungsvariablen: OLAT_USERNAME, OLAT_PASSWORD (statt login), OLAT_BASE_URL,
-  HOST, PORT, DATA_DIR, STORE (file|stateless), OLAT_MCP_SECRET, PUBLIC_URL, MAX_DOWNLOAD_MB`;
+  HOST, PORT, DATA_DIR, STORE (file|stateless), OLAT_EXTERNAL_HOSTS, OLAT_MCP_SECRET, PUBLIC_URL, MAX_DOWNLOAD_MB`;
 
 const cfg = loadConfig();
-const clientOpts = { baseUrl: cfg.baseUrl, maxDownloadBytes: cfg.maxDownloadBytes, maxInlineBinaryBytes: cfg.maxInlineBinaryBytes };
+const clientOpts = { baseUrl: cfg.baseUrl, maxDownloadBytes: cfg.maxDownloadBytes, maxInlineBinaryBytes: cfg.maxInlineBinaryBytes, externalHosts: cfg.externalHosts };
 const tokenFile = join(cfg.localDir, 'token');
 
 function prompt(question: string, hidden = false): Promise<string> {
