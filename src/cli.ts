@@ -12,6 +12,7 @@ import { OlatClientPool } from './olat/pool.js';
 import { OlatRestClient } from './olat/rest.js';
 import type { Credentials } from './olat/web.js';
 import { CredentialStore } from './store/credentials.js';
+import { createTokenStore } from './store/create.js';
 
 const HELP = `openolat-mcp-api – read-only MCP-Server & API für OpenOLAT (olat.bms-w.ch)
 
@@ -22,7 +23,7 @@ Befehle:
   serve           HTTP-Server: REST-API, MCP-Endpoint /mcp, Setup-Seite /
 
 Umgebungsvariablen: OLAT_USERNAME, OLAT_PASSWORD (statt login), OLAT_BASE_URL,
-  HOST, PORT, DATA_DIR, OLAT_MCP_SECRET, PUBLIC_URL, MAX_DOWNLOAD_MB`;
+  HOST, PORT, DATA_DIR, STORE (file|stateless), OLAT_MCP_SECRET, PUBLIC_URL, MAX_DOWNLOAD_MB`;
 
 const cfg = loadConfig();
 const clientOpts = { baseUrl: cfg.baseUrl, maxDownloadBytes: cfg.maxDownloadBytes, maxInlineBinaryBytes: cfg.maxInlineBinaryBytes };
@@ -82,7 +83,7 @@ async function stdio() {
 }
 
 function serveHttp() {
-  const store = new CredentialStore(cfg.dataDir, cfg.secret);
+  const store = createTokenStore(cfg);
   const pool = new OlatClientPool(clientOpts);
   const app = createApp({ store, pool, baseUrl: cfg.baseUrl, publicUrl: cfg.publicUrl });
   serve({ fetch: app.fetch, hostname: cfg.host, port: cfg.port }, (info) => {

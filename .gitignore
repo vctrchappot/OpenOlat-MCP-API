@@ -4,3 +4,7 @@ dist/
 .probe/
 data/
 *.log
+.vercel
+
+.vercel
+.env*

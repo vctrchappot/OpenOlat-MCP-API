@@ -5,6 +5,7 @@ import { strToU8, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { extractOfficeText } from '../src/olat/office.js';
 import { CredentialStore } from '../src/store/credentials.js';
+import { StatelessTokenStore } from '../src/store/stateless.js';
 
 describe('CredentialStore', () => {
   const dir = mkdtempSync(join(tmpdir(), 'olat-store-'));
@@ -58,5 +59,31 @@ describe('extractOfficeText', () => {
   });
   it('ignores other formats', () => {
     expect(extractOfficeText('a.pdf', Buffer.from('x'))).toBeNull();
+  });
+});
+
+describe('StatelessTokenStore', () => {
+  const secret = 'x'.repeat(40);
+  const store = new StatelessTokenStore(secret);
+  const { token } = store.create({ username: 'max.muster', password: 'Geheim-123!' }, 'vercel');
+
+  it('round-trips credentials without any storage', () => {
+    expect(token).toMatch(/^olat_s1_[A-Za-z0-9_-]+$/);
+    expect(token).not.toContain('Geheim');
+    expect(new StatelessTokenStore(secret).resolve(token)?.creds).toEqual({ username: 'max.muster', password: 'Geheim-123!' });
+    expect(store.listForToken(token)[0]).toMatchObject({ username: 'max.muster', label: 'vercel' });
+  });
+
+  it('rejects tampered tokens, other secrets and foreign formats', () => {
+    expect(store.resolve(token.slice(0, -2) + (token.endsWith('AA') ? 'BB' : 'AA'))).toBeNull();
+    expect(new StatelessTokenStore('y'.repeat(40)).resolve(token)).toBeNull();
+    expect(store.resolve('nonsense')).toBeNull();
+    expect(store.resolve('olat_s1_')).toBeNull();
+  });
+
+  it('requires a strong server secret and cannot revoke', () => {
+    expect(() => new StatelessTokenStore(undefined)).toThrow(/OLAT_MCP_SECRET/);
+    expect(() => new StatelessTokenStore('short')).toThrow();
+    expect(store.revocable).toBe(false);
   });
 });
