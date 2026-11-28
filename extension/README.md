@@ -54,6 +54,12 @@ Voraussetzung: Chrome 120 oder neuer.
 - Ändert OLAT das Login-Formular, müssen die Kennungen in `content.js` angepasst werden. `npm test` prüft sie gegen
   `test/fixtures/olat-login-form.html`.
 
+## Fehlersuche
+
+- **Rotes «!» am Symbol:** OLAT hat die Anmeldung abgelehnt. Das Popup zeigt die Meldung von OLAT. Zugangsdaten prüfen und neu speichern.
+- **Es passiert nichts:** Im Popup prüfen, ob Zugangsdaten gespeichert und der Auto-Login eingeschaltet ist, und ob er nach einem «Abmelden» pausiert.
+- **Details:** Unter `chrome://extensions` bei der Erweiterung auf «Service Worker» klicken, um die Konsole des Hintergrunddienstes zu sehen.
+
 ## Entwicklung
 
 ```
