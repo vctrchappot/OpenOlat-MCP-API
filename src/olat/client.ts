@@ -3,7 +3,7 @@ import { commandHtml, commandRedirect } from './commands.js';
 import { extractContent, type ExtractedContent, type FileData } from './content.js';
 import { NotFoundError, OlatError } from './errors.js';
 import { infoMessageTarget, matchInfoMessage, parseInfoMessages, type InfoMessage } from './infomessages.js';
-import { DEFAULT_EXTERNAL_HOSTS, fetchLandingFile, landingDataUrl, parseLanding, type LandingPage } from './landing.js';
+import { DEFAULT_EXTERNAL_HOSTS, embedCandidates, fetchLandingFile, landingDataUrl, parseLanding, type LandingPage } from './landing.js';
 import { htmlToMarkdown, type LinkRef } from './markdown.js';
 import { readXlsx } from './office.js';
 import { parseCourseTree, parseFolder, parseNodeContent, type FileRef, type FolderEntry, type TreeNode } from './parse.js';
@@ -255,21 +255,39 @@ export class OlatClient {
     return parseInfoMessages(node.markdown);
   }
 
+  get baseUrl(): URL {
+    return this.base;
+  }
+
+  /** Hosts whose embedded landing pages may be read. */
+  get allowedExternalHosts(): string[] {
+    return this.externalHosts ?? DEFAULT_EXTERNAL_HOSTS;
+  }
+
+  /**
+   * Reads the lesson plan of a landing page from candidate URLs (embed links of a course node, or a landing page URL).
+   * Returns null if none of them points to an allowed host. Only GET on the allow-listed host.
+   */
+  async landingFromCandidates(candidates: string[], opts: { from?: string; to?: string } = {}): Promise<LandingPage | null> {
+    const hosts = this.allowedExternalHosts;
+    const url = landingDataUrl(candidates, hosts);
+    if (!url) return null;
+    const sheets = readXlsx(await fetchLandingFile(url, hosts));
+    if (!sheets) throw new OlatError('Die Landing-Page-Datei ist kein lesbares Excel.', 502);
+    return parseLanding(sheets, opts);
+  }
+
   /**
    * Reads the data of an embedded landing page (course node with an external page of an allowed host):
    * upcoming lessons with topic, material, tasks and goals. Only GET on the allow-listed host.
    */
   async getLandingPage(courseId: number, nodeId: string, opts: { from?: string; to?: string } = {}): Promise<LandingPage> {
-    const hosts = this.externalHosts ?? DEFAULT_EXTERNAL_HOSTS;
     const node = await this.getCourseNode(courseId, nodeId);
-    const candidates = [...node.files.map((f) => f.url), ...node.links.map((l) => l.url), ...(node.markdown.match(/https?:\/\/[^\s)\]]+/g) ?? [])];
-    const url = landingDataUrl(candidates, hosts);
-    if (!url) {
-      throw new NotFoundError(`Der Baustein "${node.title}" bettet keine Landing Page eines freigegebenen Hosts ein (erlaubt: ${hosts.join(', ') || 'keiner'}).`);
+    const page = await this.landingFromCandidates(embedCandidates(node), opts);
+    if (!page) {
+      throw new NotFoundError(`Der Baustein "${node.title}" bettet keine Landing Page eines freigegebenen Hosts ein (erlaubt: ${this.allowedExternalHosts.join(', ') || 'keiner'}).`);
     }
-    const sheets = readXlsx(await fetchLandingFile(url, hosts));
-    if (!sheets) throw new OlatError('Die Landing-Page-Datei ist kein lesbares Excel.', 502);
-    return parseLanding(sheets, opts);
+    return page;
   }
 
   // ---------------------------------------------------------------- course structure (web UI)
